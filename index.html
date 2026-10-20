@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>半導體微影與蝕刻製程 — 互動實驗室圖鑑</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-paper: #F7F6F2;
+            --bg-card: #FFFFFF;
+            --ink-primary: #18181B;
+            --ink-secondary: #52525B;
+            --border-line: #E4E4E7;
+        }
+        body {
+            font-family: 'Noto Sans TC', 'Inter', sans-serif;
+            background-color: var(--bg-paper);
+            color: var(--ink-primary);
+        }
+        .font-serif-tc {
+            font-family: 'Noto Serif TC', serif;
+        }
+        .font-mono-code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            background-color: #FAFAFA;
+            background-image: radial-gradient(#D4D4D8 1px, transparent 1px);
+            background-size: 20px 20px;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .custom-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #D4D4D8;
+            border-radius: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #A1A1AA;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: white !important;
+                padding: 0 !important;
+            }
+            .print-full {
+                grid-column: span 12 / span 12 !important;
+                max-height: none !important;
+                overflow: visible !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col px-4 py-5 md:px-8 md:py-6 select-none">
+
+    <header class="max-w-7xl w-full mx-auto mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-zinc-300 pb-4 no-print">
+        <div>
+            <div class="flex items-center gap-3 mb-1.5 text-[11px] font-mono-code tracking-widest uppercase text-zinc-500">
+                <span>SEMICONDUCTOR FABRICATION LAB</span>
+                <span>•</span>
+                <span>POSITIVE PHOTORESIST PROCESS</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-serif-tc font-black tracking-tight text-zinc-900">
+                半導體黃光微影與蝕刻製程
+            </h1>
+        </div>
+
+        <!-- Right Action Controls & Mode Switch -->
+        <div class="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+            <!-- Mode Switcher -->
+            <div class="bg-zinc-200/80 p-1 rounded-md flex items-center text-xs font-medium border border-zinc-300/80">
+                <button id="tabModeGuide" class="px-3.5 py-1.5 rounded transition bg-white text-zinc-900 shadow-xs font-semibold">
+                    製程原理解析
+                </button>
+                <button id="tabModeWorksheet" class="px-3.5 py-1.5 rounded transition text-zinc-600 hover:text-zinc-900 flex items-center gap-2">
+                    <span>自主探索學習單</span>
+                    <span id="scoreBadgeTop" class="font-mono-code bg-zinc-800 text-zinc-100 px-1.5 py-0.2 rounded text-[10px]">0%</span>
+                </button>
+            </div>
+
+            <div class="h-5 w-[1px] bg-zinc-300 hidden sm:block"></div>
+
+            <button id="btnAutoPlay" class="flex items-center gap-1.5 px-3.5 py-2 rounded-md text-xs font-medium bg-white hover:bg-zinc-50 text-zinc-800 border border-zinc-300 transition">
+                <span id="autoPlayIcon" class="text-[10px]">▶</span> <span id="autoPlayText">自動導覽</span>
+            </button>
+            <button id="btnReplay" class="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium bg-white hover:bg-zinc-50 text-zinc-800 border border-zinc-300 transition">
+                <span>重播此步</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl w-full mx-auto flex-1 flex flex-col gap-6">
+        
+        <!-- 7-Step Architectural Navigation Bar -->
+        <div class="w-full bg-white border border-zinc-300 rounded-md overflow-x-auto no-print">
+            <div id="stepTabs" class="flex items-stretch min-w-[700px] divide-x divide-zinc-200">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- 12-Column Interactive Split Workspace -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- Left Column: Interactive Canvas Simulation (7 Cols) -->
+            <div class="lg:col-span-7 flex flex-col gap-3 no-print lg:sticky lg:top-5">
+                <div class="canvas-container border border-zinc-300 shadow-2xs">
+                    <canvas id="lithoCanvas"></canvas>
+
+                    <!-- HUD Top Overlay -->
+                    <div class="absolute top-3.5 left-4 right-4 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+                        <div class="flex items-center gap-2">
+                            <span id="stageBadge" class="bg-zinc-900 text-white font-mono-code text-xs px-3 py-1 rounded tracking-wide font-semibold">
+                                STEP 01
+                            </span>
+                            <span id="telemetryBadge" class="bg-white/95 border border-zinc-300 text-zinc-700 font-mono-code text-[11px] px-2.5 py-1 rounded hidden sm:inline-block">
+                                T = 1000°C • O₂ AMBIENT
+                            </span>
+                        </div>
+                        <div class="bg-white/95 backdrop-blur-xs border border-zinc-300 text-zinc-700 text-[11px] px-3 py-1 rounded flex flex-wrap items-center gap-3 shadow-2xs">
+                            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-xs bg-blue-600 inline-block"></span>未感光阻</span>
+                            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-xs bg-rose-500 inline-block"></span>裂解光阻</span>
+                            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-xs bg-amber-500 inline-block"></span>SiO₂ 氧化層</span>
+                            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-xs bg-slate-400 inline-block"></span>單晶矽基底</span>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Progress Bar & Engineering Footnote -->
+                    <div class="absolute bottom-0 left-0 right-0 flex flex-col pointer-events-none">
+                        <div class="px-4 pb-2 flex items-center justify-between text-[11px] font-mono-code text-zinc-500">
+                            <span id="subPhaseLabel" class="text-zinc-800 font-medium bg-white/85 px-2 py-0.5 rounded border border-zinc-200">初始化製程腔體...</span>
+                            <span class="hidden sm:inline">CROSS-SECTION SCALE • 鍵盤 ← → 切換</span>
+                        </div>
+                        <div class="w-full h-1 bg-zinc-200 overflow-hidden">
+                            <div id="animProgressBar" class="h-full bg-zinc-900 transition-none" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step Control Footer Bar -->
+                <div class="flex items-center justify-between gap-4 bg-white px-4 py-3 rounded-md border border-zinc-300">
+                    <button id="btnPrev" class="px-4 py-2 rounded text-xs font-medium bg-zinc-100 hover:bg-zinc-200 disabled:opacity-30 disabled:pointer-events-none text-zinc-800 transition border border-zinc-300 flex items-center gap-2">
+                        <span>←</span> 上一步驟
+                    </button>
+                    <div class="text-xs text-zinc-500 font-mono-code tracking-wider">
+                        STAGE <span id="currentStepNumber" class="text-zinc-900 font-bold text-sm">01</span> / 07
+                    </div>
+                    <button id="btnNext" class="px-5 py-2 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white transition flex items-center gap-2">
+                        <span id="btnNextText">下一步驟</span> <span>→</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Column: Editorial Guide & Worksheet (5 Cols) -->
+            <div class="lg:col-span-5 flex flex-col gap-4 print-full">
+
+                <!-- PANEL A: Principle Reading Guide Mode -->
+                <div id="panelGuide" class="flex flex-col">
+                    <div class="bg-white border border-zinc-300 rounded-md p-6 sm:p-7 flex flex-col justify-between min-h-[542px] shadow-2xs">
+                        <div class="flex flex-col gap-6">
+                            <!-- Step Header -->
+                            <div class="border-b border-zinc-200 pb-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span id="infoStepBadge" class="font-mono-code text-xs font-semibold text-blue-700 tracking-widest uppercase bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200">STAGE 01</span>
+                                    <span id="equipTag" class="text-[11px] font-mono-code text-zinc-500 uppercase tracking-widest">FURNACE CHAMBER</span>
+                                </div>
+                                <h2 id="stepTitle" class="text-xl font-serif-tc font-bold text-zinc-900 leading-snug mt-1">
+                                    晶圓與氧化層準備
+                                </h2>
+                            </div>
+
+                            <!-- Action Description -->
+                            <div class="border-l-2 border-zinc-900 pl-4 py-0.5">
+                                <h3 class="text-xs font-mono-code font-semibold text-zinc-500 mb-1.5 tracking-wider uppercase">
+                                    01 / 當前製程動作 (Operation)
+                                </h3>
+                                <p id="stepAction" class="text-sm text-zinc-800 leading-relaxed">
+                                    載入說明中...
+                                </p>
+                            </div>
+
+                            <!-- Principle Description -->
+                            <div class="border-l-2 border-amber-600 pl-4 py-0.5">
+                                <h3 class="text-xs font-mono-code font-semibold text-amber-800 mb-1.5 tracking-wider uppercase">
+                                    02 / 物理與化學機制 (Mechanism)
+                                </h3>
+                                <p id="stepPrinciple" class="text-sm text-zinc-800 leading-relaxed">
+                                    載入說明中...
+                                </p>
+                            </div>
+
+                            <!-- Key Parameter Box -->
+                            <div class="bg-zinc-50 border border-zinc-200 rounded p-3.5 flex flex-col gap-1.5">
+                                <div class="text-[11px] font-mono-code font-semibold text-zinc-500 uppercase tracking-wider">
+                                    03 / 高一物理化學觀念連結 (Key Takeaway)
+                                </div>
+                                <p id="stepKeyConcept" class="text-xs text-zinc-700 leading-relaxed font-medium">
+                                    載入重點中...
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Switch to Worksheet Footer -->
+                        <div class="pt-4 mt-4 flex items-center justify-between border-t border-zinc-200">
+                            <span class="text-xs text-zinc-500">觀察完晶圓剖面變化後，可切換至學習單檢核觀念。</span>
+                            <button id="btnGoWorksheetFromCard" class="text-xs font-semibold text-zinc-900 hover:text-blue-700 underline underline-offset-4 transition shrink-0">
+                                開啟探索學習單 →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL B: Digital Interactive Worksheet Mode -->
+                <div id="panelWorksheet" class="hidden flex-col gap-5 bg-white border border-zinc-300 rounded-md p-6 max-h-[542px] overflow-y-auto custom-scroll select-text shadow-2xs">
+                    <div class="border-b border-zinc-200 pb-4">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <span class="font-mono-code text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">STUDENT LAB RECORD</span>
+                                <h2 class="text-lg font-serif-tc font-bold text-zinc-900 mt-0.5">黃光微影與蝕刻製程：自主探索紀錄單</h2>
+                            </div>
+                            <button id="btnPrintWorksheet" class="px-2.5 py-1 rounded text-xs font-medium bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border border-zinc-300 transition shrink-0 no-print">
+                                列印 / 匯出 PDF
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3 mt-4">
+                            <div>
+                                <label class="block text-[11px] font-medium text-zinc-500 mb-1">班級</label>
+                                <input type="text" placeholder="例：101" class="w-full text-xs px-2.5 py-1.5 rounded border border-zinc-300 focus:border-zinc-900 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-zinc-500 mb-1">座號</label>
+                                <input type="text" placeholder="例：05" class="w-full text-xs px-2.5 py-1.5 rounded border border-zinc-300 focus:border-zinc-900 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-zinc-500 mb-1">姓名</label>
+                                <input type="text" placeholder="輸入姓名" class="w-full text-xs px-2.5 py-1.5 rounded border border-zinc-300 focus:border-zinc-900 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Score & Action Dashboard -->
+                    <div class="bg-zinc-50 border border-zinc-200 rounded p-3.5 flex flex-wrap items-center justify-between gap-2 no-print">
+                        <div>
+                            <div class="text-xs font-medium text-zinc-800">第一部分自動批改：<span id="scoreText" class="font-mono-code font-bold text-sm text-zinc-900">0 / 33</span> 分</div>
+                            <div id="feedbackBanner" class="text-[11px] text-zinc-500 mt-0.5">完成填空後點擊「核對答案」進行檢核。</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btnCheckBlanks" class="px-3 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white transition">
+                                核對答案
+                            </button>
+                            <button id="btnFillDemo" class="px-2.5 py-1.5 rounded text-xs font-medium bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-300 transition" title="填入標準答案供教師講解">
+                                教師解答
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- PART 1: Fill in the Blanks (11 blanks, 33 points) -->
+                    <div class="flex flex-col gap-3">
+                        <div class="border-b border-zinc-200 pb-1.5">
+                            <h3 class="text-xs font-mono-code font-semibold uppercase tracking-wider text-zinc-500">
+                                PART I / 製程動態觀察與關鍵填空（每格 3 分，共 33 分）
+                            </h3>
+                        </div>
+
+                        <!-- Step 1 Blank -->
+                        <div class="p-3.5 rounded border border-zinc-200 bg-white text-xs leading-relaxed text-zinc-700">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="font-bold text-zinc-900">01. 晶圓基底準備</span>
+                                <button onclick="jumpToStepFromWorksheet(0)" class="text-[11px] text-zinc-500 hover:text-zinc-900 underline no-print">檢視步驟 01</button>
+                            </div>
+                            高純度單晶矽晶圓置於高溫爐管通入氧氣，表面會熱生長一層均勻緻密的
+                            <input data-q="0" type="text" placeholder="化學式或名稱" class="ws-blank mx-1 w-24 px-1.5 py-0.5 text-center border-b border-zinc-400 bg-zinc-50 focus:outline-none focus:border-zinc-900 font-semibold text-zinc-900">
+                            薄膜。這層薄膜具有極佳的
+                            <select data-q="1" class="ws-blank mx-1 px-1.5 py-0.5 border-b border-zinc-400 bg-zinc-50 focus:outline-none focus:border-zinc-900 font-semibold text-zinc-900">
+                                <option value="">選擇性質</option>
+                                <option value="導電">導電</option>
+                                <option value="絕緣">絕緣</option>
+                            </select>
+                            特性，能阻絕電流洩漏。
+                        </div>
+
+                        <!-- Step 2 Blank -->
+                        <div class="p-3.5 rounded border border-zinc-200 bg-white text-xs leading-relaxed text-zinc-700">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="font-bold text-zinc-900">02. 旋塗光阻與軟烤</span>
+                                <button onclick="jumpToStepFromWorksheet(1)" class="text-[11px] text-zinc-500 hover:text-zinc-900 underline no-print">檢視步驟 02</button>
+                            </div>
+                            利用高速旋轉產生的
+                            <input data-q="2" type="text" placeholder="物理力名稱" class="ws-blank mx-1 w-20 px-1.5 py-0.5 text-center border-b border-zinc-400 bg-zinc-50 focus:outline-none focus:border-zinc-900 font-semibold text-zinc-900">
+                            力，將液態光阻均勻鋪展成奈米級薄膜。隨後進行「軟烤」，目的是讓光阻中的
+                            <input data-q="3" type="text" placeholder="2個字" class="ws-blank mx-1 w-20 px-1.5 py-0.5 text-center border-b border-zinc-400 bg-zinc-50 focus:outline-none focus:border-zinc-900 font-semibold text-zinc-900">
+                            揮發並使薄膜定型。
+                        </div>
+
+                        <!-- Step 3 Blank -->
+                        <div class="p-3.5 rounded border border-zinc-200 bg-white text-xs leading-relaxed text-zinc-700">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="font-bold text-zinc-900">03. 光罩對位</span>
+                                <button onclick="jumpToStepFromWorksheet(2)" class="text-[11px] text-zinc-500 hover:text-zinc-900 underline no-print">檢視步驟 03</button>
+                            </div>
+                            光罩是由紫外光可穿透的高純度
+                            <input data-q="4" type="text" placeholder="透光材質" class="ws-blank mx-1 w-20 px-1.5 py-0.5 text-center border-b border-zinc-400 bg-zinc-50 focus:outline-none focus:border-zinc-900 font-semibold text-zinc-900">
+                            基板，以及預先刻印的不透光金屬
+                            <input data-q="5" type="text" placeholder="金屬名/符號" class="ws-blank mx-1 w-20 px-1.5 py-0.5 text-center border-b border-zinc-400 bg-zinc-50 focus:outline-none focus:border-zinc-900 font-semibold text-zinc-900">
+                            遮光層所構成。
+                        </div>
+
+                        <!-- Step 4 Blank -->
+                        <div class="p-3.5 rounded border border-zinc-200 bg-white text-xs leading-relaxed text-zinc-700">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="font-bold text-zinc-900">04. 紫外光曝光</span>
+                                <button onclick="jumpToStepFromWorksheet(3)" class="text-[11px] text-zinc-500 hover:text-zinc-900 underline no-print">檢視步驟 04</button>
+                            </div>
+                            高能紫外光向下照射時，透光區下方的光阻吸收光子能量引發光化學反應，長鏈高分子共價鍵斷裂，此現象在剖面圖中標示為「
+                            <input data-q="6" type="text" placeholder="2個字" class="ws-blank mx-1 w-20 px-1.5 py-0.5 text-center border-b border-zinc-400 bg-zinc-50 focus:outline-none focus:border-zinc-900 font-semibold text-zinc-900">
+                            」。
+                        </div>
+
+                        <!-- Step 5 Blank -->
+                        <div class="p-3.5 rounded border border-zinc-200 bg-white text-xs leading-relaxed text-zinc-700">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="font-bold text-zinc-900">05. 顯影沖洗</span>
+                                <button onclick="jumpToStepFromWorksheet(4)" class="text-[11px] text-zinc-500 hover:text-zinc-900 underline no-print">檢視步驟 05</button>
+                            </div>
+                            本製程採用業界主流的「
+                            <select data-q="7" class="ws-blank mx-1 px-1.5 py-0.5 border-b border-zinc-400 bg-zinc-50 focus:outline-none focus:border-zinc-900 font-semibold text-zinc-900">
+                                <option value="">選擇</option>
+                                <option value="正">正</option>
+                                <option value="負">負</option>
+                            </select>
+                            型光阻」。噴灑弱鹼性顯影液時，受紫外光裂解的粉紅區域會
+                            <select data-q="8" class="ws-blank mx-1 px-1.5 py-0.5 border-b border-zinc-400 bg-zinc-50 focus:outline-none focus:border-zinc-900 font-semibold text-zinc-900">
+                                <option value="">選擇變化</option>
+                                <option value="溶解被沖走">溶解被沖走</option>
+                                <option value="留存硬化">留存硬化</option>
+                            </select>
+                            ，未照光的深藍光阻則完整保留。
+                        </div>
+
+                        <!-- Step 6 & 7 Blank -->
+                        <div class="p-3.5 rounded border border-zinc-200 bg-white text-xs leading-relaxed text-zinc-700">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="font-bold text-zinc-900">06–07. 電漿乾蝕刻與光阻剝離</span>
+                                <button onclick="jumpToStepFromWorksheet(5)" class="text-[11px] text-zinc-500 hover:text-zinc-900 underline no-print">檢視步驟 06</button>
+                            </div>
+                            高能電漿離子垂直向下轟擊將裸露氧化層雕出溝槽，深藍色光阻在此扮演「
+                            <input data-q="9" type="text" placeholder="功能角色" class="ws-blank mx-1 w-24 px-1.5 py-0.5 text-center border-b border-zinc-400 bg-zinc-50 focus:outline-none focus:border-zinc-900 font-semibold text-zinc-900">
+                            」的角色。最後步驟七利用氧電漿將剩餘的光阻徹底
+                            <input data-q="10" type="text" placeholder="2個字" class="ws-blank mx-1 w-20 px-1.5 py-0.5 text-center border-b border-zinc-400 bg-zinc-50 focus:outline-none focus:border-zinc-900 font-semibold text-zinc-900">
+                            ，留下精確的二氧化矽微結構。
+                        </div>
+                    </div>
+
+                    <!-- PART 2: Short Answer Questions -->
+                    <div class="flex flex-col gap-3 mt-2">
+                        <div class="flex items-center justify-between border-b border-zinc-200 pb-1.5">
+                            <h3 class="text-xs font-mono-code font-semibold uppercase tracking-wider text-zinc-500">
+                                PART II / 物理與化學機制簡答題
+                            </h3>
+                            <button id="btnToggleShortAnsKey" class="text-[11px] font-medium text-zinc-600 hover:text-zinc-900 underline no-print">
+                                顯示評分要點
+                            </button>
+                        </div>
+
+                        <!-- Q1 -->
+                        <div class="p-3.5 rounded border border-zinc-200 bg-white text-xs">
+                            <p class="font-bold text-zinc-900 mb-2 leading-relaxed">1. 【光的能量與繞射極限】為什麼雕刻奈米級微小電路時，必須使用波長極短的高能「紫外光（UV / EUV）」，而不是一般的紅光或可見光？</p>
+                            <textarea rows="2" placeholder="請結合光子能量 E=hf 或光的繞射現象簡述..." class="w-full p-2 rounded border border-zinc-300 focus:border-zinc-900 focus:outline-none text-xs"></textarea>
+                            <div class="short-ans-key hidden mt-2.5 p-3 rounded bg-zinc-50 border border-zinc-200 text-zinc-700 text-[11px] leading-relaxed">
+                                <strong class="text-zinc-900">評分要點：</strong><br>
+                                • <strong>波長與繞射</strong>：波長越短，繞射現象越不顯著，才能精準聚焦雕刻出極細的奈米級線寬。<br>
+                                • <strong>光子能量</strong>：紫外光頻率高、單顆光子能量高（E = hf），才足以打斷光阻的高分子共價鍵引發光裂解。
+                            </div>
+                        </div>
+
+                        <!-- Q2 -->
+                        <div class="p-3.5 rounded border border-zinc-200 bg-white text-xs">
+                            <p class="font-bold text-zinc-900 mb-2 leading-relaxed">2. 【正型光阻的顯影因果】根據步驟 04 到步驟 05 的變化，簡述「正型光阻」在照光前與照光後，分子結構與溶解度發生了什麼改變？</p>
+                            <textarea rows="2" placeholder="照射前結構如何？照射後變成什麼狀態？哪一部分會被顯影液沖走？" class="w-full p-2 rounded border border-zinc-300 focus:border-zinc-900 focus:outline-none text-xs"></textarea>
+                            <div class="short-ans-key hidden mt-2.5 p-3 rounded bg-zinc-50 border border-zinc-200 text-zinc-700 text-[11px] leading-relaxed">
+                                <strong class="text-zinc-900">評分要點：</strong><br>
+                                • <strong>照射前</strong>：完整緊密的高分子長鏈聚合物，難溶於顯影液。<br>
+                                • <strong>照射後</strong>：紫外光引發光裂解，長鏈斷裂成短鏈碎片，在弱鹼性顯影液中的溶解度大幅提高，因此受光區會被溶解沖走。
+                            </div>
+                        </div>
+
+                        <!-- Q3 -->
+                        <div class="p-3.5 rounded border border-zinc-200 bg-white text-xs">
+                            <p class="font-bold text-zinc-900 mb-2 leading-relaxed">3. 【蝕刻選擇比與遮蔽】在步驟 06 電漿乾蝕刻中，為什麼裸露的二氧化矽會被挖出溝槽，而深藍色光阻下方的二氧化矽卻能完好如初？</p>
+                            <textarea rows="2" placeholder="從光阻的遮蔽作用與兩者化學反應速率差異（蝕刻選擇比）說明..." class="w-full p-2 rounded border border-zinc-300 focus:border-zinc-900 focus:outline-none text-xs"></textarea>
+                            <div class="short-ans-key hidden mt-2.5 p-3 rounded bg-zinc-50 border border-zinc-200 text-zinc-700 text-[11px] leading-relaxed">
+                                <strong class="text-zinc-900">評分要點：</strong><br>
+                                • 蝕刻電漿對 SiO₂ 的化學反應消耗速率，遠大於對光阻的消耗速率（高蝕刻選擇比）。<br>
+                                • 深藍色光阻在上方阻擋離子轟擊，使下方的二氧化矽得以完整保留。
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const STEPS = [
+            {
+                id: 1,
+                name: "STEP 01 / 晶圓基底準備",
+                short: "晶圓準備",
+                equip: "THERMAL OXIDATION FURNACE",
+                telemetry: "T = 1000°C • Si + O₂ → SiO₂",
+                title: "高溫熱氧化：生長二氧化矽 (SiO₂) 絕緣介電層",
+                action: "將高純度單晶矽晶圓置於 900°C–1100°C 高溫石英爐管中通入高純度氧氣，氧分子擴散至矽表面發生熱氧化反應，由薄至厚均勻生長出一層緻密的二氧化矽 (SiO₂) 薄膜。",
+                principle: "二氧化矽具備極佳的絕緣介電強度與化學穩定性，能有效阻絕漏電流，並作為後續微影與蝕刻製程要雕刻出微結構的目標絕緣層。",
+                keyConcept: "【氧化還原反應】單晶矽（半導體）與氧氣在高溫下化合生成共價網狀固體二氧化矽（絕緣體）：Si + O₂ → SiO₂。"
+            },
+            {
+                id: 2,
+                name: "STEP 02 / 旋塗光阻與軟烤",
+                short: "旋塗光阻",
+                equip: "SPIN COATER & HOTPLATE",
+                telemetry: "ω = 3000 RPM • SOFT BAKE 100°C",
+                title: "旋塗正型光阻 (Photoresist) 與低溫軟烤定型",
+                action: "噴嘴於晶圓中央滴下定量液態正型光阻，底部真空吸盤隨即以 3000 RPM 高速旋轉，利用離心力將中央液滴向兩側均勻甩開鋪平，最後經底部加熱盤『軟烤』蒸發溶劑。",
+                principle: "正型光阻由高分子樹脂聚合物、感光劑與有機溶劑組成。未受光照前高分子長鏈結構緊密，難溶於弱鹼性顯影液；軟烤能去除溶劑並提升薄膜附著力。",
+                keyConcept: "【圓周運動與離心現象】高速旋轉時液滴所需的向心力大於附著力，使液體沿徑向向外甩展成奈米級均勻薄膜。"
+            },
+            {
+                id: 3,
+                name: "STEP 03 / 光罩對位",
+                short: "光罩對位",
+                equip: "LITHOGRAPHY STEPPER / SCANNER",
+                telemetry: "ALIGNMENT ΔX < 1.0 nm • LOCKED",
+                title: "石英光罩 (Photomask) 奈米級光學對準",
+                action: "光罩由紫外光可穿透的高純度石英基板與不透光金屬鉻 (Cr) 圖案層構成。曝光機透過雷射干涉儀偵測晶圓與光罩兩側的對準標記，進行奈米級水平微調與鎖定。",
+                principle: "鍍鉻遮光區負責阻擋紫外線，對應下方欲保留的電路結構；石英透光區則對應預定移除的區域。對位精度直接決定晶片多層電路堆疊的良率。",
+                keyConcept: "【幾何光學與遮蔽】不透光的金屬鉻層形成光學遮罩（Shadow Mask），將二維設計藍圖預備投射至晶圓表面。"
+            },
+            {
+                id: 4,
+                name: "STEP 04 / 紫外光曝光",
+                short: "紫外光曝光",
+                equip: "DUV / EUV EXPOSURE SOURCE",
+                telemetry: "λ = 193nm / 13.5nm • E = hf",
+                title: "高能紫外光 (UV) 照射：引發光化學裂解 (Photolysis)",
+                action: "上方光源發射平行紫外光束。金屬鉻遮光層完全反射並阻擋光線；穿透石英開口的高能光子直射下方光阻，由上而下逐層打斷高分子共價鍵。",
+                principle: "受光照區域的正型光阻吸收光子能量發生『光化學裂解』，長鏈聚合物斷裂為短鏈分子並產生酸性基團（圖中轉為粉紅色裂解態），在顯影液中的溶解度暴增百倍。",
+                keyConcept: "【光子能量與繞射極限】波長越短繞射越不顯著（解析度越高），且單顆光子能量 E = hf 越高，足以打斷高分子化學鍵。"
+            },
+            {
+                id: 5,
+                name: "STEP 05 / 顯影與沖洗",
+                short: "顯影沖洗",
+                equip: "DEVELOPER TRACK & HARD BAKE",
+                telemetry: "TMAH 2.38% AQ • RINSE DI WATER",
+                title: "顯影液沖洗與硬烤：溶去裂解光阻，轉移電路圖案",
+                action: "移動式噴淋頭均勻噴灑弱鹼性顯影液（如 TMAH）。受光裂解的粉紅光阻迅速溶解化為碎屑被沖走；未感光的深藍光阻完整保留，隨後進行『硬烤』強化抗蝕能力。",
+                principle: "利用曝光前後極大的化學溶解度反差，成功將光罩上的黑白幾何圖形精確轉移為光阻層的立體開口，使下方待蝕刻的二氧化矽裸露出來。",
+                keyConcept: "【酸鹼中和與溶解度】光裂解產生的酸性短鏈分子易溶於弱鹼性顯影液，未照光的疏水長鏈高分子則不反應而留存。"
+            },
+            {
+                id: 6,
+                name: "STEP 06 / 電漿乾蝕刻",
+                short: "電漿蝕刻",
+                equip: "REACTIVE ION ETCHING (RIE)",
+                telemetry: "CF₄ / Ar PLASMA • ANISOTROPIC",
+                title: "非等向性電漿乾蝕刻：垂直向下雕刻溝槽",
+                action: "晶圓送入反應離子蝕刻腔體，頂部電極激發氟碳活性電漿離子，在電場加速下垂直向下高速轟擊。深藍色光阻扮演防護遮罩，裸露的 SiO₂ 則被化學反應削除。",
+                principle: "蝕刻電漿對 SiO₂ 的消耗速率遠大於對光阻的消耗速率（高蝕刻選擇比），且離子具備垂直方向性（非等向性），能刻出側壁陡峭不側蝕的奈米溝槽。",
+                keyConcept: "【電漿物理與蝕刻選擇比】電場賦予帶電離子垂直動能，搭配高選擇比化學反應，只掏空裸露的氧化層而不傷及受保護區。"
+            },
+            {
+                id: 7,
+                name: "STEP 07 / 光阻去除",
+                short: "光阻去除",
+                equip: "O₂ PLASMA ASHER & CD-SEM",
+                telemetry: "O₂ ASHING • PATTERN VERIFIED",
+                title: "氧電漿灰化剝離 (Stripping)：奈米二氧化矽結構正式成形",
+                action: "通入氧電漿（O₂ Plasma）與有機光阻發生氧化燃燒反應，將完成遮蔽任務的剩餘深藍光阻轉化為氣體（CO₂、H₂O）抽離，留下邊緣銳利的二氧化矽微結構。",
+                principle: "單次『薄膜 ➔ 微影 ➔ 蝕刻』循環大功告成！現代處理器晶片便是重複數十層此循環，在指甲大小的矽晶圓上立體堆疊出數百億顆電晶體。",
+                keyConcept: "【有機物氧化灰化】利用活性氧自由基將碳氫高分子光阻徹底氧化為二氧化碳與水蒸氣，不損傷下方的無機二氧化矽。"
+            }
+        ];
+
+        const BLANK_ANSWERS = [
+            ["sio2", "二氧化矽", "sio₂"],
+            ["絕緣"],
+            ["離心", "離心力"],
+            ["溶劑", "水分", "有機溶劑"],
+            ["石英", "石英玻璃"],
+            ["鉻", "cr", "金屬鉻"],
+            ["裂解", "光裂解"],
+            ["正"],
+            ["溶解被沖走"],
+            ["保護盾", "防護盾", "盾牌", "遮罩", "保護層", "防護遮罩", "保護"],
+            ["清除", "去除", "剝離", "灰化", "洗掉"]
+        ];
+
+        const DEMO_ANSWERS = [
+            "SiO₂", "絕緣", "離心", "溶劑", "石英", "鉻(Cr)", "裂解", "正", "溶解被沖走", "防護遮罩", "清除"
+        ];
+
+        let currentStepIndex = 0;
+        let animProgress = 0;
+        let isAutoPlaying = false;
+        let autoPlayTimer = null;
+        let lastFrameTime = performance.now();
+
+        const canvas = document.getElementById('lithoCanvas');
+        const ctx = canvas.getContext('2d');
+        const stepTabsContainer = document.getElementById('stepTabs');
+        const stageBadge = document.getElementById('stageBadge');
+        const telemetryBadge = document.getElementById('telemetryBadge');
+        const subPhaseLabel = document.getElementById('subPhaseLabel');
+        const animProgressBar = document.getElementById('animProgressBar');
+        const infoStepBadge = document.getElementById('infoStepBadge');
+        const equipTag = document.getElementById('equipTag');
+        const stepTitle = document.getElementById('stepTitle');
+        const stepAction = document.getElementById('stepAction');
+        const stepPrinciple = document.getElementById('stepPrinciple');
+        const stepKeyConcept = document.getElementById('stepKeyConcept');
+        const currentStepNumber = document.getElementById('currentStepNumber');
+        const btnPrev = document.getElementById('btnPrev');
+        const btnNext = document.getElementById('btnNext');
+        const btnNextText = document.getElementById('btnNextText');
+        const btnReplay = document.getElementById('btnReplay');
+        const btnAutoPlay = document.getElementById('btnAutoPlay');
+        const autoPlayIcon = document.getElementById('autoPlayIcon');
+        const autoPlayText = document.getElementById('autoPlayText');
+
+        const tabModeGuide = document.getElementById('tabModeGuide');
+        const tabModeWorksheet = document.getElementById('tabModeWorksheet');
+        const panelGuide = document.getElementById('panelGuide');
+        const panelWorksheet = document.getElementById('panelWorksheet');
+        const btnGoWorksheetFromCard = document.getElementById('btnGoWorksheetFromCard');
+
+        function switchRightMode(mode) {
+            if (mode === 'worksheet') {
+                panelGuide.classList.add('hidden');
+                panelWorksheet.classList.remove('hidden');
+                panelWorksheet.classList.add('flex');
+
+                tabModeWorksheet.className = "px-3.5 py-1.5 rounded transition bg-white text-zinc-900 shadow-xs font-semibold flex items-center gap-2";
+                tabModeGuide.className = "px-3.5 py-1.5 rounded transition text-zinc-600 hover:text-zinc-900";
+            } else {
+                panelWorksheet.classList.add('hidden');
+                panelWorksheet.classList.remove('flex');
+                panelGuide.classList.remove('hidden');
+
+                tabModeGuide.className = "px-3.5 py-1.5 rounded transition bg-white text-zinc-900 shadow-xs font-semibold";
+                tabModeWorksheet.className = "px-3.5 py-1.5 rounded transition text-zinc-600 hover:text-zinc-900 flex items-center gap-2";
+            }
+        }
+
+        tabModeGuide.addEventListener('click', () => switchRightMode('guide'));
+        tabModeWorksheet.addEventListener('click', () => switchRightMode('worksheet'));
+        btnGoWorksheetFromCard.addEventListener('click', () => switchRightMode('worksheet'));
+
+        window.jumpToStepFromWorksheet = function(stepIdx) {
+            stopAutoPlay();
+            goToStep(stepIdx);
+        };
+
+        const btnCheckBlanks = document.getElementById('btnCheckBlanks');
+        const btnFillDemo = document.getElementById('btnFillDemo');
+        const scoreText = document.getElementById('scoreText');
+        const scoreBadgeTop = document.getElementById('scoreBadgeTop');
+        const feedbackBanner = document.getElementById('feedbackBanner');
+
+        function checkAllBlanks() {
+            const inputs = document.querySelectorAll('.ws-blank');
+            let correctCount = 0;
+            const totalQuestions = BLANK_ANSWERS.length;
+
+            inputs.forEach((el) => {
+                const qIdx = parseInt(el.getAttribute('data-q'), 10);
+                const userVal = (el.value || "").trim().toLowerCase();
+                const validList = BLANK_ANSWERS[qIdx];
+
+                const isMatch = validList.some(ans => userVal === ans || (userVal.length >= 2 && ans.includes(userVal)));
+
+                el.classList.remove('border-zinc-400', 'bg-zinc-50', 'border-emerald-600', 'bg-emerald-50', 'text-emerald-900', 'border-rose-600', 'bg-rose-50', 'text-rose-900');
+
+                if (isMatch) {
+                    correctCount++;
+                    el.classList.add('border-emerald-600', 'bg-emerald-50', 'text-emerald-900');
+                } else {
+                    el.classList.add('border-rose-600', 'bg-rose-50', 'text-rose-900');
+                }
+            });
+
+            const totalScore = correctCount * 3;
+            const pct = Math.round((correctCount / totalQuestions) * 100);
+            scoreText.innerText = `${totalScore} / ${totalQuestions * 3}`;
+            scoreBadgeTop.innerText = `${pct}%`;
+
+            if (correctCount === totalQuestions) {
+                feedbackBanner.innerText = "所有填空皆正確，請接續完成下方簡答題。";
+                feedbackBanner.className = "text-[11px] font-medium text-emerald-700 mt-0.5";
+            } else {
+                feedbackBanner.innerText = `已核對：答對 ${correctCount} / ${totalQuestions} 格，紅框處可點擊「檢視步驟」重新觀察。`;
+                feedbackBanner.className = "text-[11px] font-medium text-rose-700 mt-0.5";
+            }
+        }
+
+        btnCheckBlanks.addEventListener('click', checkAllBlanks);
+
+        btnFillDemo.addEventListener('click', () => {
+            const inputs = document.querySelectorAll('.ws-blank');
+            inputs.forEach((el) => {
+                const qIdx = parseInt(el.getAttribute('data-q'), 10);
+                el.value = DEMO_ANSWERS[qIdx];
+            });
+            checkAllBlanks();
+        });
+
+        const btnToggleShortAnsKey = document.getElementById('btnToggleShortAnsKey');
+        let isKeyVisible = false;
+        btnToggleShortAnsKey.addEventListener('click', () => {
+            isKeyVisible = !isKeyVisible;
+            document.querySelectorAll('.short-ans-key').forEach(el => {
+                el.classList.toggle('hidden', !isKeyVisible);
+            });
+            btnToggleShortAnsKey.innerText = isKeyVisible ? "隱藏評分要點" : "顯示評分要點";
+        });
+
+        document.getElementById('btnPrintWorksheet').addEventListener('click', () => {
+            window.print();
+        });
+
+        function initTabs() {
+            stepTabsContainer.innerHTML = '';
+            STEPS.forEach((step, idx) => {
+                const btn = document.createElement('button');
+                const isActive = idx === currentStepIndex;
+                const isPast = idx < currentStepIndex;
+
+                btn.className = `flex-1 py-2.5 px-3 text-left transition flex flex-col justify-between gap-1 border-b-2 ${
+                    isActive
+                        ? 'bg-zinc-900 text-white border-zinc-900'
+                        : isPast
+                        ? 'bg-zinc-50/80 text-zinc-800 border-emerald-600/40 hover:bg-zinc-100'
+                        : 'bg-white text-zinc-500 border-transparent hover:bg-zinc-50'
+                }`;
+                btn.innerHTML = `
+                    <div class="flex items-center justify-between w-full">
+                        <span class="font-mono-code text-[10px] tracking-wider ${isActive ? 'text-zinc-400' : 'text-zinc-400'}">0${idx + 1}</span>
+                        ${isPast ? '<span class="text-[10px] font-mono-code text-emerald-600 font-semibold">DONE</span>' : ''}
+                    </div>
+                    <div class="text-xs font-semibold truncate">${step.short}</div>
+                `;
+                btn.addEventListener('click', () => {
+                    stopAutoPlay();
+                    goToStep(idx);
+                });
+                stepTabsContainer.appendChild(btn);
+            });
+        }
+
+        function updateUI() {
+            const step = STEPS[currentStepIndex];
+            initTabs();
+
+            stageBadge.innerText = step.name;
+            telemetryBadge.innerText = step.telemetry;
+            infoStepBadge.innerText = `STAGE 0${step.id}`;
+            equipTag.innerText = step.equip;
+            stepTitle.innerText = step.title;
+            stepAction.innerText = step.action;
+            stepPrinciple.innerText = step.principle;
+            stepKeyConcept.innerText = step.keyConcept;
+            currentStepNumber.innerText = `0${step.id}`;
+
+            btnPrev.disabled = (currentStepIndex === 0);
+            if (currentStepIndex === STEPS.length - 1) {
+                btnNextText.innerText = "回到步驟 01";
+            } else {
+                btnNextText.innerText = `下一步：${STEPS[currentStepIndex + 1].short}`;
+            }
+        }
+
+        function goToStep(idx) {
+            currentStepIndex = idx;
+            animProgress = 0;
+            updateUI();
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // Helper for drawing alignment target crosshairs
+        function drawAlignmentCross(x, y, color, size = 6) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x - size, y);
+            ctx.lineTo(x + size, y);
+            ctx.moveTo(x, y - size);
+            ctx.lineTo(x, y + size);
+            ctx.stroke();
+            ctx.strokeRect(x - size * 0.55, y - size * 0.55, size * 1.1, size * 1.1);
+            ctx.restore();
+        }
+
+        // Helper for double-headed dimension arrow
+        function drawDimensionLine(x1, x2, y, label, color = '#18181b') {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 1.2;
+
+            // Vertical extension ticks
+            ctx.beginPath();
+            ctx.moveTo(x1, y - 5);
+            ctx.lineTo(x1, y + 12);
+            ctx.moveTo(x2, y - 5);
+            ctx.lineTo(x2, y + 12);
+            // Horizontal connecting line
+            ctx.moveTo(x1, y);
+            ctx.lineTo(x2, y);
+            ctx.stroke();
+
+            // Left & Right arrowheads
+            ctx.beginPath();
+            ctx.moveTo(x1, y);
+            ctx.lineTo(x1 + 5, y - 3);
+            ctx.lineTo(x1 + 5, y + 3);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(x2, y);
+            ctx.lineTo(x2 - 5, y - 3);
+            ctx.lineTo(x2 - 5, y + 3);
+            ctx.closePath();
+            ctx.fill();
+
+            // Pill background for text
+            const midX = (x1 + x2) / 2;
+            ctx.font = '600 10px "JetBrains Mono", Inter, sans-serif';
+            const textW = ctx.measureText(label).width + 10;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(midX - textW / 2, y - 7, textW, 14);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 0.8;
+            ctx.strokeRect(midX - textW / 2, y - 7, textW, 14);
+
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            ctx.fillText(label, midX, y + 3.5);
+            ctx.restore();
+        }
+
+        function drawSimulation(progress) {
+            const W = canvas.parentElement.clientWidth;
+            const H = canvas.parentElement.clientHeight;
+            ctx.clearRect(0, 0, W, H);
+
+            // Update progress bar
+            animProgressBar.style.width = `${Math.round(progress * 100)}%`;
+
+            const marginX = W * 0.08;
+            const contentW = W - marginX * 2;
+            const centerX = marginX + contentW / 2;
+
+            const ySi = H - 96;
+            const hSi = 56;
+
+            const hOxide = 36;
+            const yOxide = ySi - hOxide;
+
+            const hPR = 42;
+            const yPR = yOxide - hPR;
+
+            const blocks = [
+                { type: 'mask', x: marginX + contentW * 0.00, w: contentW * 0.20 },
+                { type: 'open', x: marginX + contentW * 0.20, w: contentW * 0.24 },
+                { type: 'mask', x: marginX + contentW * 0.44, w: contentW * 0.20 },
+                { type: 'open', x: marginX + contentW * 0.64, w: contentW * 0.20 },
+                { type: 'mask', x: marginX + contentW * 0.84, w: contentW * 0.16 }
+            ];
+
+            // =========================================================================
+            // STEP 01: Thermal Oxidation Chamber Ambient & O2 Diffusion
+            // =========================================================================
+            if (currentStepIndex === 0) {
+                ctx.save();
+                // Warm infrared furnace glow at top & bottom
+                const furnaceGrad = ctx.createLinearGradient(0, 50, 0, ySi + hSi);
+                furnaceGrad.addColorStop(0, 'rgba(234, 88, 12, 0.12)');
+                furnaceGrad.addColorStop(0.5, 'rgba(251, 146, 60, 0.04)');
+                furnaceGrad.addColorStop(1, 'rgba(234, 88, 12, 0.15)');
+                ctx.fillStyle = furnaceGrad;
+                ctx.fillRect(marginX - 16, 55, contentW + 32, ySi + hSi - 45);
+
+                // Furnace Quartz Tube Heater Coils at top
+                ctx.strokeStyle = '#ea580c';
+                ctx.lineWidth = 2;
+                for (let c = 0; c < 8; c++) {
+                    const cx = marginX + (contentW / 8) * (c + 0.5);
+                    ctx.fillStyle = 'rgba(234, 88, 12, 0.25)';
+                    ctx.beginPath();
+                    ctx.arc(cx, 66, 7, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                // O2 gas molecules diffusing downward toward Silicon surface
+                if (progress < 0.96) {
+                    for (let i = 0; i < 14; i++) {
+                        const oxX = marginX + 20 + ((i * 67 + Math.sin(performance.now() * 0.002 + i) * 18) % (contentW - 40));
+                        const oxY = 85 + ((performance.now() * 0.065 + i * 29) % (yOxide - 85));
+                        ctx.fillStyle = '#d97706';
+                        ctx.beginPath();
+                        ctx.arc(oxX - 2.5, oxY, 2.5, 0, Math.PI * 2);
+                        ctx.arc(oxX + 2.5, oxY, 2.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                ctx.restore();
+
+                subPhaseLabel.innerText = progress < 0.35
+                    ? "01 / 高溫石英爐管升溫至 1000°C，通入高純度氧氣 (O₂)"
+                    : progress < 0.85
+                    ? "02 / 氧分子擴散至矽晶圓表面，熱氧化生長二氧化矽 (Si + O₂ → SiO₂)"
+                    : "03 / 緻密二氧化矽 (SiO₂) 絕緣介電薄膜生長完成";
+            }
+
+            // =========================================================================
+            // 1. Silicon Wafer Base Substrate (Always Present)
+            // =========================================================================
+            const siGrad = ctx.createLinearGradient(0, ySi, 0, ySi + hSi);
+            siGrad.addColorStop(0, '#94a3b8');
+            siGrad.addColorStop(1, '#64748b');
+            ctx.fillStyle = siGrad;
+            ctx.fillRect(marginX, ySi, contentW, hSi);
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(marginX, ySi, contentW, hSi);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = '600 12px Inter, "Noto Sans TC", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('單晶矽晶圓基底 (Silicon Substrate - Si)', centerX, ySi + hSi / 2 + 4);
+
+            // Wafer Alignment Fiducial Marks during Step 3
+            if (currentStepIndex === 2) {
+                drawAlignmentCross(marginX + 18, ySi + hSi / 2, '#0f172a', 5);
+                drawAlignmentCross(marginX + contentW - 18, ySi + hSi / 2, '#0f172a', 5);
+            }
+
+            // =========================================================================
+            // 2. SiO2 Dielectric Oxide Layer
+            // =========================================================================
+            ctx.save();
+            if (currentStepIndex === 0) {
+                // Step 1: Progressive bottom-up thermal oxide growth thickness
+                const growRatio = Math.min(1, Math.pow(progress, 0.85));
+                const curOxH = hOxide * growRatio;
+                const curOxY = ySi - curOxH;
+
+                if (curOxH > 0.5) {
+                    const oxGrad = ctx.createLinearGradient(0, curOxY, 0, ySi);
+                    oxGrad.addColorStop(0, '#fbbf24');
+                    oxGrad.addColorStop(1, '#d97706');
+                    ctx.fillStyle = oxGrad;
+                    ctx.fillRect(marginX, curOxY, contentW, curOxH);
+                    ctx.strokeStyle = '#b45309';
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(marginX, curOxY, contentW, curOxH);
+
+                    if (curOxH > 20) {
+                        ctx.fillStyle = '#78350f';
+                        ctx.font = '600 12px Inter, "Noto Sans TC", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('熱氧化生長二氧化矽絕緣層 (SiO₂ Dielectric Layer)', centerX, curOxY + curOxH / 2 + 4);
+                    }
+                }
+            } else if (currentStepIndex <= 4) {
+                const oxGrad = ctx.createLinearGradient(0, yOxide, 0, yOxide + hOxide);
+                oxGrad.addColorStop(0, '#f59e0b');
+                oxGrad.addColorStop(1, '#d97706');
+                ctx.fillStyle = oxGrad;
+                ctx.fillRect(marginX, yOxide, contentW, hOxide);
+                ctx.strokeStyle = '#b45309';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(marginX, yOxide, contentW, hOxide);
+
+                ctx.fillStyle = '#78350f';
+                ctx.font = '600 12px Inter, "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('二氧化矽絕緣層 (SiO₂ Dielectric Layer)', centerX, yOxide + hOxide / 2 + 4);
+            } else {
+                // Step 6 (Etching) & Step 7 (Stripping)
+                blocks.forEach((blk) => {
+                    let currHeight = hOxide;
+                    let currY = yOxide;
+
+                    if (currentStepIndex === 5 && blk.type === 'open') {
+                        currHeight = hOxide * Math.max(0, 1 - progress * 1.08);
+                        currY = yOxide + (hOxide - currHeight);
+                    } else if (currentStepIndex >= 6 && blk.type === 'open') {
+                        currHeight = 0;
+                    }
+
+                    if (currHeight > 0.5) {
+                        const oxGrad = ctx.createLinearGradient(0, currY, 0, currY + currHeight);
+                        oxGrad.addColorStop(0, '#f59e0b');
+                        oxGrad.addColorStop(1, '#d97706');
+                        ctx.fillStyle = oxGrad;
+                        ctx.fillRect(blk.x, currY, blk.w, currHeight);
+                        ctx.strokeStyle = '#b45309';
+                        ctx.lineWidth = 1.2;
+                        ctx.strokeRect(blk.x, currY, blk.w, currHeight);
+
+                        if (currentStepIndex === 6 && blk.type === 'mask' && blk.w > 60) {
+                            ctx.fillStyle = '#78350f';
+                            ctx.font = '600 11px Inter, sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('SiO₂', blk.x + blk.w / 2, currY + currHeight / 2 + 4);
+                        }
+                    }
+                });
+            }
+            ctx.restore();
+
+            // =========================================================================
+            // 3. Photoresist Layer (Positive PR: Steps 2 to 7)
+            // =========================================================================
+            if (currentStepIndex >= 1 && currentStepIndex <= 6) {
+                if (currentStepIndex === 1) {
+                    // STEP 02: Spin Coating & Soft Bake
+                    ctx.save();
+                    const chuckW = 110;
+                    const chuckH = 16;
+                    const chuckY = ySi + hSi;
+
+                    if (progress < 0.78) {
+                        // Vacuum Spin Chuck
+                        ctx.fillStyle = '#27272a';
+                        ctx.fillRect(centerX - chuckW / 2, chuckY, chuckW, chuckH);
+                        ctx.fillRect(centerX - 15, chuckY + chuckH, 30, 14);
+
+                        if (progress > 0.26) {
+                            const spinPhase = (performance.now() * 0.025) % 1;
+                            ctx.strokeStyle = '#a1a1aa';
+                            ctx.lineWidth = 1.5;
+                            const lineOffset = (spinPhase - 0.5) * (chuckW * 0.7);
+                            ctx.beginPath();
+                            ctx.moveTo(centerX + lineOffset, chuckY + 3);
+                            ctx.lineTo(centerX + lineOffset, chuckY + chuckH - 3);
+                            ctx.stroke();
+
+                            ctx.fillStyle = '#18181b';
+                            ctx.font = '600 10px "JetBrains Mono", monospace';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('↻ 3000 RPM SPIN COATING', centerX, chuckY + chuckH + 22);
+                        }
+                    } else {
+                        // Soft Bake Hotplate underneath wafer
+                        const bakeP = (progress - 0.78) / 0.22;
+                        ctx.fillStyle = '#9a3412';
+                        ctx.fillRect(marginX + 10, chuckY + 2, contentW - 20, 10);
+                        ctx.fillStyle = '#ea580c';
+                        for (let h = 0; h < 9; h++) {
+                            const hx = marginX + 30 + (h * (contentW - 60) / 8);
+                            ctx.fillRect(hx - 6, chuckY + 4, 12, 6);
+                        }
+                        ctx.fillStyle = '#c2410c';
+                        ctx.font = '600 10px "JetBrains Mono", monospace';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`▲ SOFT BAKE HOTPLATE (100°C) • 溶劑揮發定型 ${Math.round(bakeP * 100)}%`, centerX, chuckY + 26);
+                    }
+                    ctx.restore();
+
+                    // Photoresist Fluid Dynamics
+                    ctx.save();
+                    const prGrad = ctx.createLinearGradient(0, yPR - 25, 0, yOxide);
+                    prGrad.addColorStop(0, '#3b82f6');
+                    prGrad.addColorStop(0.4, '#2563eb');
+                    prGrad.addColorStop(1, '#1d4ed8');
+                    ctx.fillStyle = prGrad;
+                    ctx.strokeStyle = '#1e40af';
+                    ctx.lineWidth = 1.5;
+
+                    if (progress < 0.30) {
+                        const pDrop = progress / 0.30;
+                        const dropFallP = Math.min(1, pDrop / 0.45);
+                        const puddleP = Math.max(0, (pDrop - 0.30) / 0.70);
+
+                        if (dropFallP < 1) {
+                            const dropY = 95 + (yOxide - 95) * dropFallP;
+                            ctx.beginPath();
+                            ctx.arc(centerX, dropY, 6, 0, Math.PI * 2);
+                            ctx.fill();
+                        } else if (pDrop < 0.92) {
+                            ctx.fillRect(centerX - 3.5, 95, 7, yOxide - 95);
+                        }
+
+                        if (puddleP > 0) {
+                            const domeRadiusX = 18 + 68 * Math.sin(puddleP * Math.PI * 0.5);
+                            const domeHeight = 10 + 52 * Math.sin(puddleP * Math.PI * 0.5);
+
+                            ctx.beginPath();
+                            ctx.moveTo(centerX - domeRadiusX, yOxide);
+                            ctx.bezierCurveTo(
+                                centerX - domeRadiusX * 0.65, yOxide - domeHeight * 1.25,
+                                centerX + domeRadiusX * 0.65, yOxide - domeHeight * 1.25,
+                                centerX + domeRadiusX, yOxide
+                            );
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.stroke();
+                        }
+                        subPhaseLabel.innerText = "01 / 定量滴液 (Dispense)：於晶圓正中央滴下液態正型光阻";
+                    } else if (progress < 0.78) {
+                        const pSpin = (progress - 0.30) / 0.48;
+                        const easeSpin = 1 - Math.pow(1 - pSpin, 2.4);
+
+                        const halfW = (contentW / 2);
+                        const currentSpreadHalfW = Math.min(halfW, 86 + (halfW - 86) * easeSpin);
+                        const centerTopY = yOxide - (62 * (1 - easeSpin) + hPR * easeSpin);
+                        const edgeHeight = hPR * Math.min(1, pSpin * 1.35);
+                        const edgeTopY = yOxide - edgeHeight;
+
+                        const leftX = centerX - currentSpreadHalfW;
+                        const rightX = centerX + currentSpreadHalfW;
+
+                        ctx.beginPath();
+                        ctx.moveTo(leftX, yOxide);
+                        ctx.quadraticCurveTo(leftX - 4 * (1 - easeSpin), edgeTopY, leftX + 14 * (1 - easeSpin), edgeTopY);
+                        ctx.bezierCurveTo(
+                            centerX - currentSpreadHalfW * 0.35, centerTopY,
+                            centerX + currentSpreadHalfW * 0.35, centerTopY,
+                            rightX - 14 * (1 - easeSpin), edgeTopY
+                        );
+                        ctx.quadraticCurveTo(rightX + 4 * (1 - easeSpin), edgeTopY, rightX, yOxide);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // Centrifugal arrows
+                        ctx.strokeStyle = '#1d4ed8';
+                        ctx.fillStyle = '#1d4ed8';
+                        ctx.lineWidth = 1.5;
+                        const arrowOffset = 45 + easeSpin * (halfW * 0.55);
+                        [-1, 1].forEach(dir => {
+                            const axStart = centerX + dir * 24;
+                            const axEnd = centerX + dir * arrowOffset;
+                            const ay = yPR - 16;
+                            ctx.beginPath();
+                            ctx.moveTo(axStart, ay);
+                            ctx.lineTo(axEnd, ay);
+                            ctx.stroke();
+
+                            ctx.beginPath();
+                            ctx.moveTo(axEnd, ay);
+                            ctx.lineTo(axEnd - dir * 6, ay - 4);
+                            ctx.lineTo(axEnd - dir * 6, ay + 4);
+                            ctx.closePath();
+                            ctx.fill();
+                        });
+
+                        // Edge bead droplets flinging off
+                        if (pSpin > 0.52) {
+                            const flingP = (pSpin - 0.52) / 0.48;
+                            [-1, 1].forEach(dir => {
+                                const edgeX = dir === -1 ? marginX : marginX + contentW;
+                                for (let d = 0; d < 3; d++) {
+                                    const dist = ((flingP * 45 + d * 14) % 38);
+                                    const dropX = edgeX + dir * (6 + dist);
+                                    const dropY = yPR + 8 + (dist * 0.18);
+                                    ctx.beginPath();
+                                    ctx.arc(dropX, dropY, 2.2, 0, Math.PI * 2);
+                                    ctx.fillStyle = `rgba(37, 99, 235, ${1 - dist / 38})`;
+                                    ctx.fill();
+                                }
+                            });
+                        }
+                        subPhaseLabel.innerText = "02 / 高速旋塗 (Spin Coating)：3000 RPM 離心力將光阻向兩側均勻甩展成膜";
+                    } else {
+                        const pBake = (progress - 0.78) / 0.22;
+                        ctx.fillRect(marginX, yPR, contentW, hPR);
+                        ctx.strokeRect(marginX, yPR, contentW, hPR);
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '600 12px Inter, "Noto Sans TC", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('正型光阻層 (Positive Photoresist — 旋塗軟烤定型)', centerX, yPR + hPR / 2 + 4);
+
+                        // Solvent vapor waves rising during Soft Bake
+                        ctx.strokeStyle = `rgba(217, 119, 6, ${0.8 * (1 - pBake * 0.35)})`;
+                        ctx.lineWidth = 1.3;
+                        for (let i = 1; i <= 6; i++) {
+                            const vx = marginX + (contentW / 7) * i;
+                            const vyBase = yPR - 8 - pBake * 22;
+                            ctx.beginPath();
+                            ctx.moveTo(vx, vyBase + 12);
+                            ctx.quadraticCurveTo(vx - 4, vyBase + 6, vx, vyBase);
+                            ctx.quadraticCurveTo(vx + 4, vyBase - 6, vx, vyBase - 12);
+                            ctx.stroke();
+                        }
+                        subPhaseLabel.innerText = "03 / 軟烤定型 (Soft Bake)：底部加熱使有機溶劑揮發，提升光阻緻密度與附著力";
+                    }
+                    ctx.restore();
+
+                    // Dispense Nozzle
+                    ctx.save();
+                    const nozzleLift = progress > 0.32 ? Math.min(1, (progress - 0.32) / 0.25) * 35 : 0;
+                    const nozzleAlpha = Math.max(0, 1 - Math.max(0, (progress - 0.40) / 0.20));
+                    if (nozzleAlpha > 0) {
+                        ctx.globalAlpha = nozzleAlpha;
+                        ctx.fillStyle = '#3f3f46';
+                        ctx.fillRect(centerX - 8, 52 - nozzleLift, 16, 40);
+                        ctx.fillStyle = '#18181b';
+                        ctx.fillRect(centerX - 4, 92 - nozzleLift, 8, 8);
+                    }
+                    ctx.restore();
+
+                } else if (currentStepIndex === 2) {
+                    // STEP 03: Alignment - Continuous unexposed resist
+                    const prGrad = ctx.createLinearGradient(0, yPR, 0, yPR + hPR);
+                    prGrad.addColorStop(0, '#2563eb');
+                    prGrad.addColorStop(1, '#1d4ed8');
+                    ctx.fillStyle = prGrad;
+                    ctx.fillRect(marginX, yPR, contentW, hPR);
+                    ctx.strokeStyle = '#1e40af';
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(marginX, yPR, contentW, hPR);
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '600 12px Inter, "Noto Sans TC", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('正型光阻薄膜 (對位鎖定完成，待紫外光曝光)', centerX, yPR + hPR / 2 + 4);
+
+                } else if (currentStepIndex === 3) {
+                    // STEP 04: UV Exposure & Photolysis
+                    const prGrad = ctx.createLinearGradient(0, yPR, 0, yPR + hPR);
+                    prGrad.addColorStop(0, '#2563eb');
+                    prGrad.addColorStop(1, '#1d4ed8');
+                    ctx.fillStyle = prGrad;
+                    ctx.fillRect(marginX, yPR, contentW, hPR);
+
+                    const photolysisDepth = Math.max(0, Math.min(1, (progress - 0.48) / 0.48));
+                    const brokenH = hPR * photolysisDepth;
+
+                    blocks.forEach((blk) => {
+                        if (blk.type === 'open' && brokenH > 0) {
+                            const expGrad = ctx.createLinearGradient(0, yPR, 0, yPR + brokenH);
+                            expGrad.addColorStop(0, '#f43f5e');
+                            expGrad.addColorStop(1, '#e11d48');
+                            ctx.fillStyle = expGrad;
+                            ctx.fillRect(blk.x, yPR, blk.w, brokenH);
+
+                            // Micro-scission spark particles inside the exposed resist
+                            if (photolysisDepth < 1) {
+                                ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+                                for (let sp = 0; sp < 4; sp++) {
+                                    const sx = blk.x + 12 + ((sp * 29 + performance.now() * 0.08) % (blk.w - 24));
+                                    const sy = yPR + brokenH - 3;
+                                    ctx.beginPath();
+                                    ctx.arc(sx, sy, 1.6, 0, Math.PI * 2);
+                                    ctx.fill();
+                                }
+                            }
+
+                            if (brokenH > 18) {
+                                ctx.fillStyle = '#ffffff';
+                                ctx.font = '600 11px Inter, "Noto Sans TC", sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.fillText('裂解', blk.x + blk.w / 2, yPR + brokenH / 2 + 4);
+                            }
+                        } else if (blk.type === 'mask' && progress > 0.55 && blk.w > 60) {
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                            ctx.font = '500 10px Inter, sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('未感光', blk.x + blk.w / 2, yPR + hPR / 2 + 4);
+                        }
+                    });
+
+                    ctx.strokeStyle = '#1e40af';
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(marginX, yPR, contentW, hPR);
+
+                } else if (currentStepIndex === 4) {
+                    // STEP 05: Developing & Hard Bake
+                    blocks.forEach((blk) => {
+                        if (blk.type === 'mask') {
+                            const prGrad = ctx.createLinearGradient(0, yPR, 0, yPR + hPR);
+                            prGrad.addColorStop(0, '#2563eb');
+                            prGrad.addColorStop(1, '#1d4ed8');
+                            ctx.fillStyle = prGrad;
+                            ctx.fillRect(blk.x, yPR, blk.w, hPR);
+                            ctx.strokeStyle = '#1e40af';
+                            ctx.lineWidth = 1.5;
+                            ctx.strokeRect(blk.x, yPR, blk.w, hPR);
+
+                            if (blk.w > 65) {
+                                ctx.fillStyle = '#ffffff';
+                                ctx.font = '600 11px Inter, sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.fillText('留存光阻', blk.x + blk.w / 2, yPR + hPR / 2 + 4);
+                            }
+                        } else {
+                            // Dissolving pink resist + floating fragments washing away
+                            const dissolveP = Math.min(1, progress / 0.78);
+                            const prHeight = hPR * (1 - dissolveP);
+                            const prY = yOxide - prHeight;
+                            if (prHeight > 0.5) {
+                                ctx.fillStyle = `rgba(244, 63, 94, ${0.85 * (1 - dissolveP * 0.6)})`;
+                                ctx.fillRect(blk.x, prY, blk.w, prHeight);
+                            }
+                            if (dissolveP < 0.95) {
+                                ctx.fillStyle = 'rgba(244, 63, 94, 0.65)';
+                                for (let f = 0; f < 5; f++) {
+                                    const fx = blk.x + 10 + ((f * 23 + performance.now() * 0.05) % (blk.w - 20));
+                                    const fy = prY - 4 - ((f * 13 + dissolveP * 28) % 24);
+                                    ctx.beginPath();
+                                    ctx.arc(fx, fy, 2.2, 0, Math.PI * 2);
+                                    ctx.fill();
+                                }
+                            }
+                        }
+                    });
+
+                } else if (currentStepIndex === 5) {
+                    // STEP 06: Plasma Etching Shield
+                    blocks.forEach((blk) => {
+                        if (blk.type === 'mask') {
+                            const prGrad = ctx.createLinearGradient(0, yPR, 0, yPR + hPR);
+                            prGrad.addColorStop(0, '#2563eb');
+                            prGrad.addColorStop(1, '#1d4ed8');
+                            ctx.fillStyle = prGrad;
+                            ctx.fillRect(blk.x, yPR, blk.w, hPR);
+                            ctx.strokeStyle = '#1e40af';
+                            ctx.lineWidth = 1.5;
+                            ctx.strokeRect(blk.x, yPR, blk.w, hPR);
+
+                            if (blk.w > 65) {
+                                ctx.fillStyle = '#ffffff';
+                                ctx.font = '600 11px Inter, sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.fillText('光阻防護遮罩', blk.x + blk.w / 2, yPR + hPR / 2 + 4);
+                            }
+                        }
+                    });
+
+                } else if (currentStepIndex === 6) {
+                    // STEP 07: O2 Plasma Ashing (Stripping)
+                    const ashP = Math.min(1, progress / 0.65);
+                    const remainH = hPR * (1 - ashP);
+                    const curY = yOxide - remainH;
+
+                    if (remainH > 0.5) {
+                        ctx.save();
+                        ctx.globalAlpha = 1 - ashP * 0.4;
+                        blocks.forEach((blk) => {
+                            if (blk.type === 'mask') {
+                                ctx.fillStyle = '#2563eb';
+                                ctx.fillRect(blk.x, curY, blk.w, remainH);
+                                ctx.strokeStyle = '#1e40af';
+                                ctx.strokeRect(blk.x, curY, blk.w, remainH);
+
+                                // Ashing CO2 / H2O bubbles rising off the resist
+                                ctx.fillStyle = 'rgba(56, 189, 248, 0.75)';
+                                for (let b = 0; b < 4; b++) {
+                                    const bx = blk.x + 10 + ((b * 21 + performance.now() * 0.04) % (blk.w - 20));
+                                    const by = curY - 5 - ((b * 15 + ashP * 40) % 30);
+                                    ctx.beginPath();
+                                    ctx.arc(bx, by, 2.2, 0, Math.PI * 2);
+                                    ctx.fill();
+                                }
+                            }
+                        });
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // =========================================================================
+            // 4. Photomask & Alignment System (Step 3 & Step 4)
+            // =========================================================================
+            const finalMaskY = 132;
+            const maskH = 20;
+            const chromeH = 12;
+
+            if (currentStepIndex === 2 || currentStepIndex === 3) {
+                let maskY = finalMaskY;
+                let maskOffsetX = 0;
+
+                if (currentStepIndex === 2) {
+                    // Step 3 Phase A (0 - 0.5): Mask descends from top with slight horizontal offset
+                    // Step 3 Phase B (0.5 - 0.85): Fine horizontal laser alignment (dx -> 0)
+                    // Step 3 Phase C (0.85 - 1.0): Alignment locked
+                    const descendP = Math.min(1, progress / 0.50);
+                    maskY = 60 + (finalMaskY - 60) * descendP;
+
+                    if (progress < 0.85) {
+                        const alignP = Math.max(0, (progress - 0.40) / 0.45);
+                        maskOffsetX = (1 - alignP) * 14 * Math.cos(alignP * Math.PI * 2);
+                    }
+                }
+
+                ctx.save();
+                ctx.translate(maskOffsetX, 0);
+
+                // Quartz plate
+                ctx.fillStyle = 'rgba(224, 242, 254, 0.9)';
+                ctx.fillRect(marginX, maskY, contentW, maskH);
+                ctx.strokeStyle = '#0284c7';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(marginX, maskY, contentW, maskH);
+
+                ctx.fillStyle = '#0369a1';
+                ctx.font = '600 11px Inter, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText('高純度石英光罩基板 (Quartz Photomask)', marginX + 6, maskY - 6);
+
+                // Mask alignment fiducial crosshairs
+                if (currentStepIndex === 2) {
+                    drawAlignmentCross(marginX + 18, maskY + maskH / 2, '#0284c7', 5);
+                    drawAlignmentCross(marginX + contentW - 18, maskY + maskH / 2, '#0284c7', 5);
+                }
+
+                // Chrome absorber blocks
+                blocks.forEach((blk) => {
+                    if (blk.type === 'mask') {
+                        const chrGrad = ctx.createLinearGradient(0, maskY + maskH, 0, maskY + maskH + chromeH);
+                        chrGrad.addColorStop(0, '#27272a');
+                        chrGrad.addColorStop(1, '#09090b');
+                        ctx.fillStyle = chrGrad;
+                        ctx.fillRect(blk.x, maskY + maskH, blk.w, chromeH);
+                        ctx.strokeStyle = '#09090b';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(blk.x, maskY + maskH, blk.w, chromeH);
+
+                        ctx.fillStyle = '#f4f4f5';
+                        ctx.font = '500 9px "JetBrains Mono", Inter, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('Cr 遮光層', blk.x + blk.w / 2, maskY + maskH + 9);
+                    }
+                });
+                ctx.restore();
+
+                if (currentStepIndex === 2) {
+                    // Vertical laser alignment beams connecting mask fiducials and wafer fiducials
+                    const isLocked = progress >= 0.85;
+                    ctx.save();
+                    ctx.strokeStyle = isLocked ? '#10b981' : '#f59e0b';
+                    ctx.lineWidth = 1.2;
+                    ctx.setLineDash([3, 3]);
+                    [marginX + 18, marginX + contentW - 18].forEach(lx => {
+                        ctx.beginPath();
+                        ctx.moveTo(lx + maskOffsetX, maskY + maskH / 2);
+                        ctx.lineTo(lx, ySi + hSi / 2);
+                        ctx.stroke();
+                    });
+
+                    // Boundary projection lines
+                    ctx.strokeStyle = '#94a3b8';
+                    ctx.lineWidth = 1;
+                    blocks.forEach(blk => {
+                        ctx.beginPath();
+                        ctx.moveTo(blk.x + maskOffsetX, maskY + maskH + chromeH);
+                        ctx.lineTo(blk.x, yPR);
+                        ctx.stroke();
+                    });
+                    ctx.setLineDash([]);
+                    ctx.restore();
+
+                    subPhaseLabel.innerText = progress < 0.45
+                        ? "01 / 光罩載入微影機台，下降至晶圓正上方"
+                        : progress < 0.85
+                        ? "02 / 雷射干涉儀掃描對準標記，進行奈米級水平微調"
+                        : "03 / 光罩與晶圓對位鎖定完成 (ΔX < 1 nm)，準備曝光";
+                }
+            }
+
+            // =========================================================================
+            // 5. Ultraviolet (UV) Exposure Beams (Step 4)
+            // =========================================================================
+            if (currentStepIndex === 3) {
+                const uvSourceY = 54;
+                const uvSourceH = 22;
+                const maskTopY = finalMaskY;
+                const maskBottomY = finalMaskY + maskH + chromeH;
+
+                ctx.fillStyle = '#f3e8ff';
+                ctx.fillRect(marginX, uvSourceY, contentW, uvSourceH);
+                ctx.strokeStyle = '#9333ea';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(marginX, uvSourceY, contentW, uvSourceH);
+
+                ctx.fillStyle = '#6b21a8';
+                ctx.font = '600 11px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('準直紫外光曝光源 (Collimated UV Source • λ = 193nm / EUV)', centerX, uvSourceY + 15);
+
+                const beamReachMask = Math.min(1, progress / 0.26);
+                const currentUpperBeamY = uvSourceY + uvSourceH + (maskTopY - (uvSourceY + uvSourceH)) * beamReachMask;
+
+                const beamReachPR = progress > 0.26 ? Math.min(1, (progress - 0.26) / 0.24) : 0;
+                const currentLowerBeamY = maskBottomY + (yPR - maskBottomY) * beamReachPR;
+
+                if (beamReachMask > 0) {
+                    ctx.save();
+                    const topBeamH = currentUpperBeamY - (uvSourceY + uvSourceH);
+                    const upperGrad = ctx.createLinearGradient(0, uvSourceY + uvSourceH, 0, currentUpperBeamY);
+                    upperGrad.addColorStop(0, 'rgba(147, 51, 234, 0.35)');
+                    upperGrad.addColorStop(1, 'rgba(168, 85, 247, 0.20)');
+                    ctx.fillStyle = upperGrad;
+                    ctx.fillRect(marginX, uvSourceY + uvSourceH, contentW, topBeamH);
+
+                    if (beamReachMask < 1) {
+                        ctx.strokeStyle = '#a855f7';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(marginX, currentUpperBeamY);
+                        ctx.lineTo(marginX + contentW, currentUpperBeamY);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+
+                blocks.forEach((blk) => {
+                    if (blk.type === 'open' && beamReachPR > 0) {
+                        ctx.save();
+                        const lowerH = currentLowerBeamY - maskBottomY;
+                        const lowerGrad = ctx.createLinearGradient(0, maskBottomY, 0, currentLowerBeamY);
+                        lowerGrad.addColorStop(0, 'rgba(147, 51, 234, 0.40)');
+                        lowerGrad.addColorStop(0.5, 'rgba(168, 85, 247, 0.30)');
+                        lowerGrad.addColorStop(1, 'rgba(126, 34, 206, 0.60)');
+                        ctx.fillStyle = lowerGrad;
+                        ctx.fillRect(blk.x, maskBottomY, blk.w, lowerH);
+
+                        ctx.fillStyle = '#7e22ce';
+                        const offset = (performance.now() / 35) % 36;
+                        for (let ay = maskBottomY + 10 + offset; ay < currentLowerBeamY - 8; ay += 36) {
+                            ctx.beginPath();
+                            ctx.moveTo(blk.x + blk.w / 2, ay + 9);
+                            ctx.lineTo(blk.x + blk.w / 2 - 5, ay);
+                            ctx.lineTo(blk.x + blk.w / 2 + 5, ay);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+
+                        if (beamReachPR < 1) {
+                            ctx.strokeStyle = '#c084fc';
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.moveTo(blk.x, currentLowerBeamY);
+                            ctx.lineTo(blk.x + blk.w, currentLowerBeamY);
+                            ctx.stroke();
+                        } else {
+                            ctx.fillStyle = 'rgba(244, 63, 94, 0.85)';
+                            ctx.fillRect(blk.x, yPR - 2, blk.w, 4);
+
+                            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                            ctx.lineWidth = 1.5;
+                            const rippleY = yPR + (hPR * Math.min(1, (progress - 0.48) / 0.48));
+                            ctx.beginPath();
+                            ctx.moveTo(blk.x + 4, rippleY);
+                            ctx.lineTo(blk.x + blk.w - 4, rippleY);
+                            ctx.stroke();
+                        }
+                        ctx.restore();
+                    }
+                });
+
+                subPhaseLabel.innerText = progress < 0.26
+                    ? "01 / 準直紫外光束自曝光源向下發射"
+                    : progress < 0.50
+                    ? "02 / 鉻層阻擋紫外線，透光區光束穿透石英直射光阻表面"
+                    : "03 / 光子能量打斷高分子共價鍵，受光區由上而下逐層發生光裂解";
+            }
+
+            // =========================================================================
+            // 6. Developing Spray Bar & Hard Bake (Step 5)
+            // =========================================================================
+            if (currentStepIndex === 4) {
+                ctx.save();
+                if (progress < 0.82) {
+                    // Horizontal Developer Spray Manifold Bar
+                    const barY = 92;
+                    ctx.fillStyle = '#3f3f46';
+                    ctx.fillRect(marginX + 20, barY, contentW - 40, 12);
+                    ctx.strokeStyle = '#18181b';
+                    ctx.strokeRect(marginX + 20, barY, contentW - 40, 12);
+
+                    // 5 Spray Nozzles along the manifold
+                    for (let n = 1; n <= 5; n++) {
+                        const nx = marginX + 20 + ((contentW - 40) / 6) * n;
+                        ctx.fillStyle = '#18181b';
+                        ctx.fillRect(nx - 4, barY + 12, 8, 5);
+
+                        // Fan-shaped mist cone
+                        const mistGrad = ctx.createLinearGradient(0, barY + 17, 0, yPR);
+                        mistGrad.addColorStop(0, 'rgba(2, 132, 199, 0.30)');
+                        mistGrad.addColorStop(1, 'rgba(56, 189, 248, 0.05)');
+                        ctx.fillStyle = mistGrad;
+                        ctx.beginPath();
+                        ctx.moveTo(nx - 3, barY + 17);
+                        ctx.lineTo(nx + 3, barY + 17);
+                        ctx.lineTo(nx + 42, yPR);
+                        ctx.lineTo(nx - 42, yPR);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+
+                    // Animated droplets
+                    ctx.fillStyle = '#0284c7';
+                    for (let i = 0; i < 24; i++) {
+                        const rx = marginX + 30 + ((i * 41 + performance.now() * 0.1) % (contentW - 60));
+                        const ry = 112 + ((i * 23 + performance.now() * 0.22) % (yPR - 112));
+                        ctx.beginPath();
+                        ctx.arc(rx, ry, 1.8, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    subPhaseLabel.innerText = "01 / 顯影液噴淋 (Developing)：弱鹼性顯影液迅速溶解沖走光裂解之粉紅光阻";
+                } else {
+                    // Post-Develop Hard Bake
+                    const chuckY = ySi + hSi;
+                    ctx.fillStyle = '#9a3412';
+                    ctx.fillRect(marginX + 10, chuckY + 2, contentW - 20, 10);
+                    ctx.fillStyle = '#c2410c';
+                    ctx.font = '600 10px "JetBrains Mono", monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('▲ HARD BAKE (130°C) • 硬烤強化留存光阻之抗蝕刻能力', centerX, chuckY + 25);
+                    subPhaseLabel.innerText = "02 / 去離子水洗淨與硬烤 (Hard Bake)：強化深藍光阻結構，裸露出待蝕刻的 SiO₂";
+                }
+                ctx.restore();
+            }
+
+            // =========================================================================
+            // 7. Anisotropic Plasma Dry Etching (Step 6)
+            // =========================================================================
+            if (currentStepIndex === 5) {
+                ctx.save();
+                // Top RF Plasma Electrode Plate
+                const rfY = 66;
+                ctx.fillStyle = '#18181b';
+                ctx.fillRect(marginX, rfY, contentW, 14);
+                ctx.fillStyle = '#10b981';
+                ctx.font = '600 10px "JetBrains Mono", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('RF PLASMA CATHODE • 射頻電漿加速電極 (CF₄ + Ar)', centerX, rfY + 10.5);
+
+                // Ambient plasma sheath glow
+                const sheathGrad = ctx.createLinearGradient(0, rfY + 14, 0, yPR);
+                sheathGrad.addColorStop(0, 'rgba(16, 185, 129, 0.18)');
+                sheathGrad.addColorStop(1, 'rgba(16, 185, 129, 0.03)');
+                ctx.fillStyle = sheathGrad;
+                ctx.fillRect(marginX, rfY + 14, contentW, yPR - (rfY + 14));
+
+                blocks.forEach((blk) => {
+                    if (blk.type === 'open') {
+                        const curOxideTop = yOxide + hOxide * Math.min(1, progress * 1.08);
+                        const plasmaGrad = ctx.createLinearGradient(0, rfY + 14, 0, curOxideTop);
+                        plasmaGrad.addColorStop(0, 'rgba(16, 185, 129, 0.12)');
+                        plasmaGrad.addColorStop(1, 'rgba(5, 150, 105, 0.42)');
+                        ctx.fillStyle = plasmaGrad;
+                        ctx.fillRect(blk.x, rfY + 14, blk.w, curOxideTop - (rfY + 14));
+
+                        // Energetic vertical ions bombarding downward
+                        ctx.fillStyle = '#047857';
+                        ctx.strokeStyle = '#059669';
+                        ctx.lineWidth = 1.2;
+                        for (let j = 0; j < 5; j++) {
+                            const px = blk.x + 14 + (j * (blk.w - 28) / 4);
+                            const travelH = curOxideTop - (rfY + 24);
+                            const py = rfY + 20 + ((performance.now() * 0.28 + j * 37) % travelH);
+
+                            // Ion tail + circle
+                            ctx.beginPath();
+                            ctx.moveTo(px, py - 10);
+                            ctx.lineTo(px, py);
+                            ctx.stroke();
+                            ctx.beginPath();
+                            ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+
+                        // Etch byproduct sputter particles rising from trench floor
+                        if (progress < 0.94) {
+                            ctx.fillStyle = '#d97706';
+                            for (let s = 0; s < 4; s++) {
+                                const sx = blk.x + 12 + ((s * 29 + performance.now() * 0.07) % (blk.w - 24));
+                                const sy = curOxideTop - 3 - ((s * 11 + performance.now() * 0.09) % 18);
+                                ctx.beginPath();
+                                ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+                                ctx.fill();
+                            }
+                        }
+                    }
+                });
+
+                subPhaseLabel.innerText = progress < 0.88
+                    ? "01 / 反應離子蝕刻 (RIE)：活性氟碳離子垂直向下轟擊，選擇性削去裸露之 SiO₂"
+                    : "02 / 蝕刻終點偵測 (Endpoint Reached)：垂直溝槽雕刻至矽基底表面，光阻保護區完好無損";
+                ctx.restore();
+            }
+
+            // =========================================================================
+            // 8. Photoresist Stripping & Final Metrology Callouts (Step 7)
+            // =========================================================================
+            if (currentStepIndex === 6) {
+                ctx.save();
+                if (progress < 0.65) {
+                    // O2 Plasma Ashing Glow
+                    const ashGrad = ctx.createLinearGradient(0, 80, 0, yOxide);
+                    ashGrad.addColorStop(0, 'rgba(56, 189, 248, 0.18)');
+                    ashGrad.addColorStop(1, 'rgba(56, 189, 248, 0.02)');
+                    ctx.fillStyle = ashGrad;
+                    ctx.fillRect(marginX, 80, contentW, yOxide - 80);
+
+                    ctx.fillStyle = '#0369a1';
+                    ctx.font = '600 12px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('氧電漿灰化剝離 (O₂ Plasma Ashing)：將剩餘有機光阻氧化分解為氣體抽離', centerX, 115);
+                    subPhaseLabel.innerText = "01 / 氧電漿灰化 (O₂ Ashing)：活性氧自由基將剩餘光阻氧化分解清除";
+                } else {
+                    // Final Engineering CD Metrology Callouts
+                    const calloutAlpha = Math.min(1, (progress - 0.65) / 0.25);
+                    ctx.globalAlpha = calloutAlpha;
+
+                    // Draw CD dimension annotations above patterned trenches & islands
+                    const dimY = yOxide - 28;
+                    drawDimensionLine(blocks[0].x, blocks[0].x + blocks[0].w, dimY, "SiO₂ 保留區", "#b45309");
+                    drawDimensionLine(blocks[1].x, blocks[1].x + blocks[1].w, dimY, "蝕刻開窗溝槽 (Trench)", "#0f172a");
+                    drawDimensionLine(blocks[2].x, blocks[2].x + blocks[2].w, dimY, "SiO₂ 絕緣閘極", "#b45309");
+
+                    ctx.fillStyle = '#18181b';
+                    ctx.font = '600 12px Inter, "Noto Sans TC", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('光阻剝離完成 — 光罩圖案 1:1 精確轉移至二氧化矽絕緣層', centerX, 118);
+                    subPhaseLabel.innerText = "02 / 製程完工檢驗 (CD-SEM Metrology)：微米與奈米級二氧化矽結構精確成形";
+                }
+                ctx.restore();
+            }
+        }
+
+        function animate(now) {
+            const dt = (now - lastFrameTime) / 1000;
+            lastFrameTime = now;
+
+            if (animProgress < 1) {
+                const speedMap = [0.34, 0.26, 0.34, 0.25, 0.32, 0.30, 0.32];
+                const speed = speedMap[currentStepIndex] || 0.32;
+                animProgress = Math.min(1, animProgress + dt * speed);
+            }
+
+            drawSimulation(animProgress);
+            requestAnimationFrame(animate);
+        }
+
+        btnNext.addEventListener('click', () => {
+            stopAutoPlay();
+            if (currentStepIndex < STEPS.length - 1) {
+                goToStep(currentStepIndex + 1);
+            } else {
+                goToStep(0);
+            }
+        });
+
+        btnPrev.addEventListener('click', () => {
+            stopAutoPlay();
+            if (currentStepIndex > 0) {
+                goToStep(currentStepIndex - 1);
+            }
+        });
+
+        btnReplay.addEventListener('click', () => {
+            animProgress = 0;
+        });
+
+        function stopAutoPlay() {
+            if (isAutoPlaying) {
+                isAutoPlaying = false;
+                clearInterval(autoPlayTimer);
+                autoPlayTimer = null;
+                autoPlayIcon.innerText = "▶";
+                autoPlayText.innerText = "自動導覽";
+                btnAutoPlay.classList.remove('bg-zinc-900', 'text-white');
+                btnAutoPlay.classList.add('bg-white', 'text-zinc-800');
+            }
+        }
+
+        function startAutoPlay() {
+            isAutoPlaying = true;
+            autoPlayIcon.innerText = "⏸";
+            autoPlayText.innerText = "暫停導覽";
+            btnAutoPlay.classList.remove('bg-white', 'text-zinc-800');
+            btnAutoPlay.classList.add('bg-zinc-900', 'text-white');
+
+            autoPlayTimer = setInterval(() => {
+                if (currentStepIndex < STEPS.length - 1) {
+                    goToStep(currentStepIndex + 1);
+                } else {
+                    goToStep(0);
+                }
+            }, 5200);
+        }
+
+        btnAutoPlay.addEventListener('click', () => {
+            if (isAutoPlaying) {
+                stopAutoPlay();
+            } else {
+                startAutoPlay();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            const tag = document.activeElement?.tagName?.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                btnNext.click();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                btnPrev.click();
+            }
+        });
+
+        window.onload = function() {
+            resizeCanvas();
+            updateUI();
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>
